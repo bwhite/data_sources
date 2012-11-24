@@ -25,12 +25,14 @@ class Test(unittest.TestCase):
         ds = data_sources.HBaseDataSource({'mydata': 'colfam1:col0'}, 'testtable')
         print list(ds.rows())
         print list(ds.columns(list(ds.rows())[0]))
+        print list(ds.column_values(list(ds.rows())[0]))
         print [(x, list(y)) for x, y in ds.row_columns()]
         print [(x, dict(y)) for x, y in ds.row_column_values()]
         print ds.uri
         ds = data_sources.data_source_from_uri(ds.uri)
         print list(ds.rows())
         print list(ds.columns(list(ds.rows())[0]))
+        print list(ds.column_values(list(ds.rows())[0]))
         print [(x, list(y)) for x, y in ds.row_columns()]
         print [(x, dict(y)) for x, y in ds.row_column_values()]
         print ds.uri
@@ -53,12 +55,14 @@ class Test(unittest.TestCase):
             ds = data_sources.DirectoryDataSource({'mydata': 'colfam1:col0'}, temp_dir)
             print list(ds.rows())
             print list(ds.columns(list(ds.rows())[0]))
+            print list(ds.column_values(list(ds.rows())[0]))
             print [(x, list(y)) for x, y in ds.row_columns()]
             print [(x, dict(y)) for x, y in ds.row_column_values()]
             print ds.uri
             ds = data_sources.data_source_from_uri(ds.uri)
             print list(ds.rows())
             print list(ds.columns(list(ds.rows())[0]))
+            print list(ds.column_values(list(ds.rows())[0]))
             print [(x, list(y)) for x, y in ds.row_columns()]
             print [(x, dict(y)) for x, y in ds.row_column_values()]
             print ds.uri
