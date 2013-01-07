@@ -15,10 +15,11 @@ def data_source_from_uri(data_source_path):
     if res:
         groups = map(urllib.unquote, res.groups())
         return DirectoryDataSource(columns=columns, base_dir=groups[0])
-    res = re.search('hbase://(.+):([0-9]+)/(.+)', data_source_path)
+    res = re.search('hbase://(.+):([0-9]+)/([^/]+)/([^/]*)/?([^/]*)', data_source_path)
     if res:
         groups = map(urllib.unquote, res.groups())
-        return HBaseDataSource(columns=columns, host=groups[0], port=int(groups[1]), table=groups[2])
+        print(groups)
+        return HBaseDataSource(columns=columns, host=groups[0], port=int(groups[1]), table=groups[2], start_row=groups[3], stop_row=groups[4])
     raise ValueError('Unknown data source uri [%s]' % data_source_path)
 
 
@@ -39,12 +40,16 @@ class BaseDataSource(object):
     def columns(self, row):
         return (self._raw_to_pretty_columns[x] for x in self._columns(row))
 
-    def column_values(self, row):
-        return ((self._raw_to_pretty_columns[x], y) for x, y in self._column_values(row))
+    def column_values(self, row, columns=None):
+        if columns is None:
+            columns = self._raw_columns
+        else:
+            columns = [self._pretty_to_raw_columns[column] for column in columns]
+        return ((self._raw_to_pretty_columns[x], y) for x, y in self._column_values(row, columns))
 
-    def _column_values(self, row):
+    def _column_values(self, row, columns):
         # Fallback implementation
-        return ((x, self._value(row, x)) for x in self._columns(row))
+        return ((x, self._value(row, x)) for x in self._columns(row, columns))
 
     def rows(self):
         return self._rows()  # Allows for future modification
@@ -72,8 +77,10 @@ class BaseDataSource(object):
         # Fallback implementation
         return (row for row, _ in self._row_column_values())
 
-    def _row_columns(self):
+    def _row_columns(self, columns=None):
         # Fallback implementation
+        if columns is None:
+            columns = self._raw_columns
         for row, columns in self._row_column_values():
             yield row, (column for column, _ in columns)
 
@@ -99,42 +106,48 @@ class DirectoryDataSource(BaseDataSource):
         return (x for x in os.listdir(self.base_dir)
                 if os.path.isdir(os.path.join(self.base_dir, x)))
 
-    def _columns(self, row):
+    def _columns(self, row, columns=None):
+        if columns is None:
+            columns = self._raw_columns
         row_dir = self._make_path(row)
         return (x for x in os.listdir(row_dir)
-                if os.path.isfile(os.path.join(row_dir, x)) and x in self._raw_columns)
+                if os.path.isfile(os.path.join(row_dir, x)) and x in columns)
 
-    def _row_columns(self):
+    def _row_columns(self, columns=None):
+        if columns is None:
+            columns = self._raw_columns
         for row in self._rows():
-            yield row, self._columns(row)
+            yield row, self._columns(row, columns)
 
     def _value(self, row, column):
         return open(self._make_path(row, column)).read()
 
-    def _row_column_values(self, columns):
-        for cur_row, cur_columns in self._row_columns():
+    def _row_column_values(self, columns=None):
+        if columns is None:
+            columns = self._raw_columns
+        for cur_row, cur_columns in self._row_columns(columns):
             yield cur_row, ((column, self._value(cur_row, column))
                             for column in set(columns).intersection(cur_columns))
 
 
 class HBaseDataSource(BaseDataSource):
 
-    def __init__(self, columns, table, host='localhost', port=9090):
+    def __init__(self, columns, table, host='localhost', port=9090, start_row='', stop_row=None):
         super(HBaseDataSource, self).__init__('hbase://%s:%d/%s' % (urllib.quote(host), port, urllib.quote(table)), columns)
         import hadoopy_hbase
         self._hbase = hadoopy_hbase.connect(host, port)
         self._table = table
         self._raw_columns = columns.values()
-        self._scanner = lambda *args, **kw: hadoopy_hbase.scanner(self._hbase, self._table, *args, **kw)
+        self._scanner = lambda *args, **kw: hadoopy_hbase.scanner(self._hbase, self._table, start_row=start_row, stop_row=stop_row, *args, **kw)
 
-    def _columns(self, row):
-        out = self._hbase.getRowWithColumns(self._table, row, self._raw_columns)
+    def _columns(self, row, columns):
+        out = self._hbase.getRowWithColumns(self._table, row, columns)
         if not out:
             raise ValueError('Unknown row [%s]' % row)
         return (x for x in out[0].columns)
 
-    def _column_values(self, row):
-        out = self._hbase.getRowWithColumns(self._table, row, self._raw_columns)
+    def _column_values(self, row, columns):
+        out = self._hbase.getRowWithColumns(self._table, row, columns)
         if not out:
             raise ValueError('Unknown row [%s]' % row)
         return ((x, y.value) for x, y in out[0].columns.items())
