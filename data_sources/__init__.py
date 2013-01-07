@@ -81,8 +81,8 @@ class BaseDataSource(object):
         # Fallback implementation
         if columns is None:
             columns = self._raw_columns
-        for row, columns in self._row_column_values():
-            yield row, (column for column, _ in columns)
+        for row, cur_columns in self._row_column_values(columns):
+            yield row, (column for column, _ in cur_columns)
 
 
 class DirectoryDataSource(BaseDataSource):
@@ -158,6 +158,8 @@ class HBaseDataSource(BaseDataSource):
             raise ValueError('Unknown row/column [%s][%s]' % (row, column))
         return out[0].value
 
-    def _row_column_values(self, columns):
+    def _row_column_values(self, columns=None):
+        if columns is None:
+            columns = self._raw_columns
         return ((cur_row, cur_columns.iteritems())
                 for cur_row, cur_columns in self._scanner(columns=columns))
