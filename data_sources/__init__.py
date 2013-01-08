@@ -15,7 +15,7 @@ def data_source_from_uri(data_source_path):
     if res:
         groups = map(urllib.unquote, res.groups())
         return DirectoryDataSource(columns=columns, base_dir=groups[0])
-    res = re.search('hbase://(.+):([0-9]+)/([^/]+)/([^/]*)/?([^/]*)', data_source_path)
+    res = re.search('hbase://(.+):([0-9]+)/([^/]+)/([^/]*)/([^/]*)', data_source_path)
     if res:
         groups = map(urllib.unquote, res.groups())
         print(groups)
