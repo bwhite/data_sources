@@ -10,7 +10,7 @@ def data_source_from_uri(data_source_path):
     except ValueError:
         columns = {}
     else:
-        columns = dict(map(urllib.unquote, x.split('=', 1))
+        columns = dict(map(base64.urlsafe_b64decode, x.split('=', 1))
                        for x in re.findall('[^&\?]+=[^&\?]+', query_string))
     res = re.search('dir://(.+)', data_source_path)
     if res:
