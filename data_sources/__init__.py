@@ -1,6 +1,7 @@
 import os
 import re
 import urllib
+import base64
 
 
 def data_source_from_uri(data_source_path):
@@ -19,7 +20,8 @@ def data_source_from_uri(data_source_path):
     if res:
         groups = map(urllib.unquote, res.groups())
         print(groups)
-        return HBaseDataSource(columns=columns, host=groups[0], port=int(groups[1]), table=groups[2], start_row=groups[3], stop_row=groups[4])
+        return HBaseDataSource(columns=columns, host=groups[0], port=int(groups[1]), table=groups[2],
+                               start_row=groups[3], stop_row=groups[4])
     raise ValueError('Unknown data source uri [%s]' % data_source_path)
 
 
@@ -132,13 +134,16 @@ class DirectoryDataSource(BaseDataSource):
 
 class HBaseDataSource(BaseDataSource):
 
-    def __init__(self, columns, table, host='localhost', port=9090, start_row='', stop_row=None):
-        super(HBaseDataSource, self).__init__('hbase://%s:%d/%s' % (urllib.quote(host), port, urllib.quote(table)), columns)
+    def __init__(self, columns, table, host, port, start_row, stop_row):
+        super(HBaseDataSource, self).__init__('hbase://%s:%d/%s/%s/%s' % (urllib.quote(host), port, urllib.quote(table), start_row, stop_row), columns)
         import hadoopy_hbase
         self._hbase = hadoopy_hbase.connect(host, port)
         self._table = table
         self._raw_columns = columns.values()
-        self._scanner = lambda *args, **kw: hadoopy_hbase.scanner(self._hbase, self._table, start_row=start_row, stop_row=stop_row, *args, **kw)
+        self._scanner = lambda *args, **kw: hadoopy_hbase.scanner(self._hbase, self._table,
+                                                                  start_row=base64.urlsafe_b64decode(start_row),
+                                                                  stop_row=base64.urlsafe_b64decode(stop_row),
+                                                                  *args, **kw)
 
     def _columns(self, row, columns):
         out = self._hbase.getRowWithColumns(self._table, row, columns)
