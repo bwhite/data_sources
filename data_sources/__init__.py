@@ -168,3 +168,9 @@ class HBaseDataSource(BaseDataSource):
             columns = self._raw_columns
         return ((cur_row, cur_columns.iteritems())
                 for cur_row, cur_columns in self._scanner(columns=columns))
+
+    def _row_columns(self, columns=None):
+        if columns is None:
+            columns = self._raw_columns
+        return ((cur_row, cur_columns.iterkeys())
+                for cur_row, cur_columns in self._scanner(columns=columns, filter="KeyOnlyFilter ()"))
