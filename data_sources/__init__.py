@@ -92,6 +92,7 @@ class HBaseDataSource(BaseDataSource):
     def _scanner(self, *args, **kw):
         import hadoopy_hbase
         for x, y in self._slices:
+            print((x, y))
             for z in hadoopy_hbase.scanner(self._hbase, self._table,
                                            start_row=x,
                                            stop_row=y,
