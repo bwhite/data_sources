@@ -75,7 +75,7 @@ class HBaseDataSource(BaseDataSource):
         suffix = '/'.join(base64.urlsafe_b64encode(x) + '/' + base64.urlsafe_b64encode(y) for x, y in slices)
         super(HBaseDataSource, self).__init__('hbase://%s:%d/%s/%s' % (urllib.quote(host), port, urllib.quote(table), suffix), columns)
         import hadoopy_hbase
-        self._hbase = hadoopy_hbase.connect(host, port)
+        self._hbase = hadoopy_hbase.connect(host, port, timeout=300000)  # 5 min timeout
         self._table = table
         self._raw_columns = columns.values()
         self._slices = slices
