@@ -3,7 +3,7 @@ import urllib
 import base64
 
 
-def data_source_from_uri(data_source_path):
+def data_source_from_uri(data_source_path, **kw):
     try:
         data_source_path, query_string = data_source_path.split('?', 1)
     except ValueError:
@@ -18,7 +18,7 @@ def data_source_from_uri(data_source_path):
         slices = map(base64.urlsafe_b64decode, groups[3].split('/'))
         assert len(slices) % 2 == 0
         slices = [(slices[x * 2], slices[x * 2 + 1]) for x in range(len(slices) / 2)]
-        return HBaseDataSource(columns=columns, host=groups[0], port=int(groups[1]), table=groups[2], slices=slices)
+        return HBaseDataSource(columns=columns, host=groups[0], port=int(groups[1]), table=groups[2], slices=slices, **kw)
     raise ValueError('Unknown data source uri [%s]' % data_source_path)
 
 
@@ -71,11 +71,14 @@ class BaseDataSource(object):
 
 class HBaseDataSource(BaseDataSource):
 
-    def __init__(self, columns, table, host, port, slices):
+    def __init__(self, columns, table, host, port, slices, data_connection=None):
         suffix = '/'.join(base64.urlsafe_b64encode(x) + '/' + base64.urlsafe_b64encode(y) for x, y in slices)
         super(HBaseDataSource, self).__init__('hbase://%s:%d/%s/%s' % (urllib.quote(host), port, urllib.quote(table), suffix), columns)
         import hadoopy_hbase
-        self._hbase = hadoopy_hbase.connect(host, port, timeout=300000)  # 5 min timeout
+        if data_connection:
+            self._hbase = data_connection
+        else:
+            self._hbase = hadoopy_hbase.connect(host, port)
         self._table = table
         self._raw_columns = columns.values()
         self._slices = slices
