@@ -10,7 +10,7 @@ def data_source_from_uri(data_source_path, **kw):
         columns = {}
     else:
         columns = [x.split('=', 1) for x in re.findall('[^&\?]+=[^&\?]+', query_string)]
-        columns = {x: base64.urlsafe_b64decode(y) for x, y in columns}
+        columns = dict((x, base64.urlsafe_b64decode(y)) for x, y in columns)
     res = re.search('hbase://(.+):([0-9]+)/([^/]+)/(.*)', data_source_path)
     if res:
         groups = map(urllib.unquote, res.groups())
